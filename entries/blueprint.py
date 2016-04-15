@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for, request
+from flask import Blueprint, flash, render_template, redirect, url_for, request
 from helpers import object_list
 from models import Entry, Tag
 from forms import EntryForm
@@ -30,6 +30,7 @@ def create():
 			entry = form.save_entry(Entry())
 			db.session.add(entry)
 			db.session.commit()
+			flash('Entry "%s" created successfully.' % entry.title, 'success')
 			return redirect(url_for('entries.detail', slug=entry.slug))
 	else:
 		form = EntryForm()
@@ -38,13 +39,52 @@ def create():
 
 @entries.route('/<slug>/')
 def detail(slug):
-	entry = Entry.query.filter(Entry.slug == slug).first_or_404()
+	entry = get_entry_or_404(slug)
 	return render_template('entries/detail.html', entry=entry)
 
+@entries.route('/<slug>/edit/', methods=['GET', 'POST']) 
+def edit(slug): 
+	entry = Entry.query.filter(Entry.slug == slug).first_or_404() 
+	if request.method == 'POST': 
+		form = EntryForm(request.form, obj=entry) 
+		if form.validate(): 
+			entry = form.save_entry(entry) 
+			db.session.add(entry) 
+			db.session.commit() 
+			flash('Entry "%s" has been saved.' % entry.title, 'success')
+			return redirect(url_for('entries.detail', slug=entry.slug)) 
+	else: 
+		form = EntryForm(obj=entry) 
+
+	return render_template('entries/edit.html', entry=entry, form=form) 
+
+@entries.route('/<slug>/delete/', methods=['GET', 'POST']) 
+def delete(slug): 
+	entry = Entry.query.filter(Entry.slug == slug).first_or_404() 
+	if request.method == 'POST': 
+		entry.status = Entry.STATUS_DELETED 
+		db.session.add(entry) 
+		db.session.commit()
+		flash('Entry "%s" has been deleted.' % entry.title, 'success')
+		return redirect(url_for('entries.index')) 
+
+	return render_template('entries/delete.html', entry=entry) 
+
+	
 def entry_list(template, query, **context):
+	valid_statuses = (Entry.STATUS_PUBLIC, Entry.STATUS_DRAFT)
+	query = query.filter(Entry.status.in_(valid_statuses))
 	search = request.args.get('q')
 	if search:
 			query = query.filter(
 								(Entry.body.contains(search)) |
 								(Entry.title.contains(search)))
 	return object_list(template, query, **context)
+
+def get_entry_or_404(slug): 
+  	valid_statuses = (Entry.STATUS_PUBLIC, Entry.STATUS_DRAFT) 
+  	return (Entry.query
+		  .filter( 
+			  (Entry.slug == slug) & 
+			  (Entry.status.in_(valid_statuses))) 
+		  .first_or_404()) 
