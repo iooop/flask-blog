@@ -6,4 +6,5 @@ class Configuration(object):
 	SECRET_KEY = 'flask is fun!' 
 	SQLALCHEMY_DATABASE_URI = 'sqlite:///%s/blog.db' % APPLICATION_DIR
 	SQLALCHEMY_TRACK_MODIFICATIONS = True
-	
+	STATIC_DIR = os.path.join(APPLICATION_DIR, 'static')
+	IMAGES_DIR = os.path.join(STATIC_DIR, 'images')
