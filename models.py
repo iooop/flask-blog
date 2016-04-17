@@ -35,6 +35,13 @@ class Entry(db.Model):
 	author_id = db.Column(db.Integer, db.ForeignKey("user.id"))
 	
 	tags = db.relationship('Tag', secondary=entry_tags, backref=db.backref('entries', lazy='dynamic'))
+	@property 
+	def tag_list(self): 
+		return ', '.join(tag.name for tag in self.tags) 
+	
+	@property 
+	def tease(self): 
+		return self.body[:100] 
 
 	def __init__(self, *args, **kwargs):
 		super(Entry, self).__init__(*args, **kwargs) 
@@ -71,6 +78,7 @@ class User(db.Model):
 	name = db.Column(db.String(64)) 
 	slug = db.Column(db.String(64), unique=True) 
 	active = db.Column(db.Boolean, default=True) 
+	admin = db.Column(db.Boolean, default=False)
 	created_timestamp = db.Column(db.DateTime, default=datetime.datetime.now) 
 	
 	entries = db.relationship('Entry', backref='author', lazy='dynamic')
@@ -95,13 +103,17 @@ class User(db.Model):
 
 	def is_anonymous(self): 
 		return False 
+	
+	def is_admin(self):
+		return self.admin
 
 	@staticmethod 
 	def make_password(plaintext): 
 		return bcrypt.generate_password_hash(plaintext) 
 	
 	def check_password(self, raw_password): 
-		return bcrypt.check_password_hash(self.password_hash, raw_password) 
+		#return bcrypt.check_password_hash(self.password_hash, raw_password) 
+		return self.password_hash == raw_password
 	
 	@classmethod 
 	def create(cls, email, password, **kwargs): 
